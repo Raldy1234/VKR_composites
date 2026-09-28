@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ВКР — прогноз свойств композита</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+    <h1>Прогноз свойств полимерного композита</h1>
+    <p class="subtitle">Веб-приложение к выпускной квалификационной работе</p>
+</header>
+
+<nav class="tabs">
+    <button type="button" id="btn-ml" class="tab-btn" onclick="showTab('ml')">Прогноз свойств</button>
+    <button type="button" id="btn-nn" class="tab-btn" onclick="showTab('nn')">Рекомендация соотношения</button>
+</nav>
+
+<main>
+    <section id="tab-ml" class="tab-panel">
+        <h2>Прогноз свойств при растяжении</h2>
+        <p class="hint">
+            Введите 11 характеристик материала — приложение предскажет
+            «Модуль упругости при растяжении, ГПа» и «Прочность при
+            растяжении, МПа» по обученным моделям (пайплайны
+            MinMaxScaler + SVR).
+        </p>
+
+        {% if errors_ml %}
+        <div class="alert alert-error">
+            <strong>Исправьте ошибки:</strong>
+            <ul>{% for e in errors_ml %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if warnings_ml %}
+        <div class="alert alert-warning">
+            <strong>Внимание, значения вне диапазона обучения:</strong>
+            <ul>{% for w in warnings_ml %}<li>{{ w }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('predict_properties') }}">
+            <div class="grid">
+                {% for feat in features_ml %}
+                <label>
+                    <span>{{ feat }}</span>
+                    <input type="text" name="ml_{{ loop.index0 }}"
+                           value="{{ raw_ml.get(feat, defaults_ml[feat]) }}">
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="submit-btn">Предсказать</button>
+        </form>
+
+        {% if result_ml %}
+        <div class="result">
+            <h3>Результат прогноза</h3>
+            <p><strong>Модуль упругости при растяжении:</strong> {{ result_ml.modulus }} ГПа</p>
+            <p><strong>Прочность при растяжении:</strong> {{ result_ml.strength }} МПа</p>
+            <p class="accuracy-note">{{ accuracy_note }}</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <section id="tab-nn" class="tab-panel">
+        <h2>Рекомендация соотношения матрица-наполнитель</h2>
+        <p class="hint">
+            Введите 12 характеристик материала (включая желаемые механические
+            свойства) — нейронная сеть (Keras) предскажет рекомендуемое
+            «Соотношение матрица-наполнитель».
+        </p>
+
+        {% if errors_nn %}
+        <div class="alert alert-error">
+            <strong>Исправьте ошибки:</strong>
+            <ul>{% for e in errors_nn %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if warnings_nn %}
+        <div class="alert alert-warning">
+            <strong>Внимание, значения вне диапазона обучения:</strong>
+            <ul>{% for w in warnings_nn %}<li>{{ w }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('predict_ratio') }}">
+            <div class="grid">
+                {% for feat in features_nn %}
+                <label>
+                    <span>{{ feat }}</span>
+                    <input type="text" name="nn_{{ loop.index0 }}"
+                           value="{{ raw_nn.get(feat, defaults_nn[feat]) }}">
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="submit-btn">Предсказать</button>
+        </form>
+
+        {% if result_nn %}
+        <div class="result">
+            <h3>Результат прогноза</h3>
+            <p><strong>Рекомендуемое соотношение матрица-наполнитель:</strong> {{ result_nn.ratio }}</p>
+            <p class="accuracy-note">{{ accuracy_note }}</p>
+        </div>
+        {% endif %}
+    </section>
+</main>
+
+<footer>
+    <p>Значения по умолчанию — медианы обучающей выборки (data/processed/data_clean.csv).</p>
+</footer>
+
+<script>
+function showTab(tab) {
+    document.getElementById('tab-ml').classList.toggle('active', tab === 'ml');
+    document.getElementById('tab-nn').classList.toggle('active', tab === 'nn');
+    document.getElementById('btn-ml').classList.toggle('active', tab === 'ml');
+    document.getElementById('btn-nn').classList.toggle('active', tab === 'nn');
+}
+showTab('{{ active_tab }}');
+</script>
+</body>
+</html>

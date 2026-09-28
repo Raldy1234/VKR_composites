@@ -19,9 +19,9 @@ TEXT_COLOR = "#22333b"
 EDA_COLOR = "#f3ecdc"
 EDA_EDGE = "#a67c2e"
 
-fig, ax = plt.subplots(figsize=(11, 17))
+fig, ax = plt.subplots(figsize=(11, 16))
 ax.set_xlim(0, 10)
-ax.set_ylim(1, 33)
+ax.set_ylim(2.6, 32.5)
 ax.axis("off")
 
 
@@ -48,11 +48,11 @@ def arrow(b_from, b_to, dy_from=None, dy_to=None):
 
 
 # --- Основная цепочка (общая для всех данных) ---
-b1 = box(5, 32, 7.6, 1.6, "Загрузка данных\nX_bp.xlsx и X_nup.xlsx")
-b2 = box(5, 29.6, 7.6, 1.6, "Объединение INNER JOIN\nпо индексу (index_col=0)")
-b3 = box(5, 27.2, 7.6, 1.8,
+b1 = box(5, 31.6, 7.6, 1.6, "Загрузка данных\nX_bp.xlsx и X_nup.xlsx")
+b2 = box(5, 29.2, 7.6, 1.6, "Объединение INNER JOIN\nпо индексу (index_col=0)")
+b3 = box(5, 26.8, 7.6, 1.8,
          "Разведочный анализ (EDA)\nстатистика, гистограммы, boxplot,\npairplot, корреляции")
-b4 = box(5, 24.6, 7.6, 1.6, "Очистка выбросов\nметод IQR")
+b4 = box(5, 24.3, 7.6, 1.6, "Очистка выбросов\nметод IQR")
 
 arrow(b1, b2)
 arrow(b2, b3)
@@ -62,25 +62,36 @@ arrow(b3, b4)
 COL_EDA, COL_ML, COL_NN = 1.7, 5.0, 8.3
 COL_W = 2.9
 
-eda1 = box(COL_EDA, 22.2, COL_W, 1.9,
+
+def branch_header(cx, text, color):
+    ax.text(cx, 22.7, text, ha="center", va="center", fontsize=9.5,
+             fontweight="bold", color=color,
+             bbox=dict(facecolor="white", edgecolor="none", pad=2))
+
+
+branch_header(COL_EDA, "EDA (визуализация)", EDA_EDGE)
+branch_header(COL_ML, "Модели машинного обучения", SPLIT_EDGE)
+branch_header(COL_NN, "Нейронная сеть", SPLIT_EDGE)
+
+eda1 = box(COL_EDA, 21.0, COL_W, 1.9,
            "Нормализация MinMax\n(весь датасет, только\nдля визуализации)",
            facecolor=EDA_COLOR, edgecolor=EDA_EDGE, fontsize=8.7)
-ml1 = box(COL_ML, 22.2, COL_W, 1.9, "train_test_split\n70/30 (random_state=42)",
+ml1 = box(COL_ML, 21.0, COL_W, 1.9, "train_test_split\n70/30 (random_state=42)",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn1 = box(COL_NN, 22.2, COL_W, 1.9, "train_test_split\n70/30 (random_state=42)",
+nn1 = box(COL_NN, 21.0, COL_W, 1.9, "train_test_split\n70/30 (random_state=42)",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 
 arrow(b4, eda1)
 arrow(b4, ml1)
 arrow(b4, nn1)
 
-eda2 = box(COL_EDA, 19.6, COL_W, 1.9,
+eda2 = box(COL_EDA, 18.4, COL_W, 1.9,
            "Гистограммы\nдо / после нормализации\n(только для EDA)",
            facecolor=EDA_COLOR, edgecolor=EDA_EDGE, fontsize=8.7)
-ml2 = box(COL_ML, 19.6, COL_W, 1.9,
+ml2 = box(COL_ML, 18.4, COL_W, 1.9,
           "Pipeline: MinMaxScaler\n(fit только на train)\n+ модель",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn2 = box(COL_NN, 19.6, COL_W, 1.9,
+nn2 = box(COL_NN, 18.4, COL_W, 1.9,
           "MinMaxScaler\n(fit только на train)",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 
@@ -88,50 +99,47 @@ arrow(eda1, eda2)
 arrow(ml1, ml2)
 arrow(nn1, nn2)
 
-ml3 = box(COL_ML, 17.0, COL_W, 1.9, "GridSearchCV, cv=10\n(по каждой целевой)",
+ml3 = box(COL_ML, 15.8, COL_W, 1.9, "GridSearchCV, cv=10\n(по каждой целевой)",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn3 = box(COL_NN, 17.0, COL_W, 1.9, "Keras:\n3 архитектуры",
+nn3 = box(COL_NN, 15.8, COL_W, 1.9, "Keras:\n3 архитектуры",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 arrow(ml2, ml3)
 arrow(nn2, nn3)
 
-ml4 = box(COL_ML, 14.4, COL_W, 1.9,
+ml4 = box(COL_ML, 13.2, COL_W, 1.9,
           "Отбор модели по CV_R2\n(сравнение с DummyRegressor)",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn4 = box(COL_NN, 14.4, COL_W, 1.9, "Отбор архитектуры\nпо val_loss",
+nn4 = box(COL_NN, 13.2, COL_W, 1.9, "Отбор архитектуры\nпо val_loss",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 arrow(ml3, ml4)
 arrow(nn3, nn4)
 
-ml5 = box(COL_ML, 11.8, COL_W, 1.9,
+ml5 = box(COL_ML, 10.6, COL_W, 1.9,
           "Оценка на тесте\nMAE, MSE, RMSE, R2",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn5 = box(COL_NN, 11.8, COL_W, 1.9,
+nn5 = box(COL_NN, 10.6, COL_W, 1.9,
           "Оценка на тесте\nMAE, MSE, RMSE, R2",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 arrow(ml4, ml5)
 arrow(nn4, nn5)
 
-ml6 = box(COL_ML, 9.2, COL_W, 1.9,
+ml6 = box(COL_ML, 8.0, COL_W, 1.9,
           "Сохранение модели\napp/models/*.joblib",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
-nn6 = box(COL_NN, 9.2, COL_W, 1.9,
+nn6 = box(COL_NN, 8.0, COL_W, 1.9,
           "Сохранение модели\nnn_ratio.keras,\nnn_scaler.joblib",
           facecolor=SPLIT_COLOR, edgecolor=SPLIT_EDGE, fontsize=8.7)
 arrow(ml5, ml6)
 arrow(nn5, nn6)
 
 # --- Слияние двух направлений моделирования в приложении ---
-b9 = box(5, 6.4, 7.6, 1.8, "Веб-приложение Flask\n(app/app.py)")
+b9 = box(5, 5.7, 7.6, 1.8, "Веб-приложение Flask\n(app/app.py)")
 arrow(ml6, b9)
 arrow(nn6, b9)
 
-b10 = box(5, 3.8, 7.6, 1.6,
+b10 = box(5, 3.4, 7.6, 1.6,
           "Пользователь: ввод характеристик\nматериала → прогноз (ориентировочный)")
 arrow(b9, b10)
-
-ax.text(5, 32.9, "Блок-схема процесса ВКР: от данных до веб-приложения",
-        ha="center", va="bottom", fontsize=13, fontweight="bold", color=TEXT_COLOR)
 
 fig.tight_layout()
 out_path = os.path.join(FIGURES_DIR, "flowchart.png")

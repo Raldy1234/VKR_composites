@@ -21,7 +21,7 @@ EDA_EDGE = "#a67c2e"
 
 fig, ax = plt.subplots(figsize=(11, 16))
 ax.set_xlim(0, 10)
-ax.set_ylim(2.6, 32.5)
+ax.set_ylim(2.0, 33.0)
 ax.axis("off")
 
 
@@ -143,5 +143,5 @@ arrow(b9, b10)
 
 fig.tight_layout()
 out_path = os.path.join(FIGURES_DIR, "flowchart.png")
-fig.savefig(out_path, dpi=300, bbox_inches="tight")
+fig.savefig(out_path, dpi=300, bbox_inches="tight", pad_inches=0.3)
 print("Сохранено:", out_path)

@@ -1,0 +1,11 @@
+# ВКР Data Science PRO — reglas del proyecto
+- Datos en data/: unir X_bp.xlsx y X_nup.xlsx por índice con INNER JOIN (index_col=0).
+- Objetivos ML: «Модуль упругости при растяжении, ГПа» y «Прочность при растяжении, МПа», un modelo por objetivo.
+- Red neuronal (Keras): objetivo «Соотношение матрица-наполнитель».
+- train_test_split(test_size=0.3, random_state=42); GridSearchCV con cv=10; siempre comparar con DummyRegressor.
+- Métricas MAE, MSE, RMSE y R² en train y test. Nunca maquillar resultados.
+- Gráficos: títulos y ejes en ruso, guardar en figures/ en PNG a 300 dpi con nombres descriptivos.
+- Notebooks en notebooks/, aplicación en app/, modelos guardados en app/models/.
+- Usar siempre el entorno .venv (Python 3.12). Ejecutar el código y corregir errores antes de terminar.
+- Al terminar cada bloque: git add, commit con mensaje descriptivo en ruso y push.
+- Háblame en español.

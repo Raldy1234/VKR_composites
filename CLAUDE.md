@@ -4,6 +4,7 @@
 - Red neuronal (Keras): objetivo «Соотношение матрица-наполнитель».
 - train_test_split(test_size=0.3, random_state=42); GridSearchCV con cv=10; siempre comparar con DummyRegressor.
 - Métricas MAE, MSE, RMSE y R² en train y test. Nunca maquillar resultados.
+- Selección de modelos siempre por validación cruzada o validación, nunca por el test.
 - Gráficos: títulos y ejes en ruso, guardar en figures/ en PNG a 300 dpi con nombres descriptivos.
 - Notebooks en notebooks/, aplicación en app/, modelos guardados en app/models/.
 - Usar siempre el entorno .venv (Python 3.12). Ejecutar el código y corregir errores antes de terminar.

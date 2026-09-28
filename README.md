@@ -144,18 +144,30 @@ VKR_composites/
 
 ```mermaid
 flowchart TD
-    A[Загрузка данных\nX_bp.xlsx и X_nup.xlsx] --> B[Объединение INNER JOIN\nпо индексу]
-    B --> C[Разведочный анализ EDA]
+    A[Загрузка данных\nX_bp.xlsx и X_nup.xlsx] --> B[Объединение INNER JOIN\nпо индексу index_col=0]
+    B --> C["EDA: статистика, гистограммы,\nboxplot, pairplot, корреляции"]
     C --> D[Очистка выбросов\nметод IQR]
-    D --> E[Нормализация\nMinMaxScaler]
-    E --> F[train_test_split\ntest_size=0.3, random_state=42]
-    F --> G[Модели ML\nGridSearchCV, cv=10\nМодуль упругости / Прочность]
-    F --> H[Нейронная сеть Keras\nСоотношение матрица-наполнитель]
-    G --> I[Оценка: сравнение с DummyRegressor\nCV_R2, MAE, MSE, RMSE, R2]
-    H --> I
-    I --> J[Сохранение моделей\napp/models/]
-    J --> K[Веб-приложение Flask\napp/app.py]
-    K --> L[Пользователь: ввод параметров\n→ ориентировочный прогноз]
+
+    D --> E1[Нормализация MinMax\nвесь датасет, только для визуализации]
+    E1 --> E2["Гистограммы до/после\nнормализации (только для EDA)"]
+
+    D --> F1[train_test_split 70/30]
+    F1 --> F2["Pipeline: MinMaxScaler\nfit только на train + модель"]
+    F2 --> F3[GridSearchCV, cv=10]
+    F3 --> F4["Отбор модели по CV_R2\nсравнение с DummyRegressor"]
+    F4 --> F5[Оценка на тесте\nMAE, MSE, RMSE, R2]
+    F5 --> F6[Сохранение модели\napp/models/*.joblib]
+
+    D --> G1[train_test_split 70/30]
+    G1 --> G2[MinMaxScaler\nfit только на train]
+    G2 --> G3[Keras: 3 архитектуры]
+    G3 --> G4[Отбор архитектуры\nпо val_loss]
+    G4 --> G5[Оценка на тесте\nMAE, MSE, RMSE, R2]
+    G5 --> G6["Сохранение модели\nnn_ratio.keras, nn_scaler.joblib"]
+
+    F6 --> H[Веб-приложение Flask\napp/app.py]
+    G6 --> H
+    H --> I[Пользователь: ввод параметров\n→ ориентировочный прогноз]
 ```
 
 ## 7. Установка и запуск

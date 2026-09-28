@@ -53,6 +53,12 @@ ACCURACY_NOTE = (
     "лабораторные испытания."
 )
 
+ACCURACY_NOTE_NN = (
+    "Точность нейронной сети ограничена (R² на тестовой выборке близок к "
+    "нулю), поэтому рекомендация носит ориентировочный характер и не "
+    "заменяет лабораторные испытания."
+)
+
 app = Flask(__name__)
 
 _data = pd.read_csv(DATA_PATH, index_col=0)
@@ -127,6 +133,7 @@ def render_page(active_tab, result_ml=None, result_nn=None,
         warnings_nn=warnings_nn or [],
         active_tab=active_tab,
         accuracy_note=ACCURACY_NOTE,
+        accuracy_note_nn=ACCURACY_NOTE_NN,
     )
 
 
@@ -144,8 +151,8 @@ def predict_properties():
         modulus = float(MODEL_MODULUS.predict(row)[0])
         strength = float(MODEL_STRENGTH.predict(row)[0])
         result = {
-            "modulus": round(modulus, 3),
-            "strength": round(strength, 3),
+            "modulus": round(modulus, 2),
+            "strength": round(strength, 2),
         }
     return render_page(
         active_tab="ml",
@@ -164,7 +171,7 @@ def predict_ratio():
         row = pd.DataFrame([values], columns=FEATURES_NN)
         scaled = NN_SCALER.transform(row)
         pred = float(NN_MODEL.predict(scaled, verbose=0)[0][0])
-        result = {"ratio": round(pred, 3)}
+        result = {"ratio": round(pred, 2)}
     return render_page(
         active_tab="nn",
         result_nn=result,

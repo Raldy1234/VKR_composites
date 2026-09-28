@@ -64,8 +64,8 @@
         {% if result_ml %}
         <div class="result">
             <h3>Результат прогноза</h3>
-            <p><strong>Модуль упругости при растяжении:</strong> {{ result_ml.modulus }} ГПа</p>
-            <p><strong>Прочность при растяжении:</strong> {{ result_ml.strength }} МПа</p>
+            <p><strong>Модуль упругости при растяжении:</strong> {{ "%.2f"|format(result_ml.modulus) }} ГПа</p>
+            <p><strong>Прочность при растяжении:</strong> {{ "%.2f"|format(result_ml.strength) }} МПа</p>
             <p class="accuracy-note">{{ accuracy_note }}</p>
         </div>
         {% endif %}
@@ -116,8 +116,8 @@
         {% if result_nn %}
         <div class="result">
             <h3>Результат прогноза</h3>
-            <p><strong>Рекомендуемое соотношение матрица-наполнитель:</strong> {{ result_nn.ratio }}</p>
-            <p class="accuracy-note">{{ accuracy_note }}</p>
+            <p><strong>Рекомендуемое соотношение матрица-наполнитель:</strong> {{ "%.2f"|format(result_nn.ratio) }}</p>
+            <p class="accuracy-note">{{ accuracy_note_nn }}</p>
         </div>
         {% endif %}
     </section>

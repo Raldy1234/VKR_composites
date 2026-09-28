@@ -43,6 +43,8 @@ header h1 {
 nav.tabs {
     display: flex;
     gap: 4px;
+    max-width: 900px;
+    margin: 0 auto;
     padding: 16px 32px 0 32px;
     background: var(--bg);
 }
@@ -112,15 +114,18 @@ label span {
     line-height: 1.25;
 }
 
-input[type="text"] {
+input[type="text"],
+select {
     padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 0.95rem;
     color: var(--text);
+    background: #fff;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+select:focus {
     outline: none;
     border-color: var(--primary);
 }

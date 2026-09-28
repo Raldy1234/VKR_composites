@@ -44,10 +44,17 @@
         <form method="post" action="{{ url_for('predict_properties') }}">
             <div class="grid">
                 {% for feat in features_ml %}
+                {% set val = raw_ml.get(feat, defaults_ml[feat]) %}
                 <label>
                     <span>{{ feat }}</span>
-                    <input type="text" name="ml_{{ loop.index0 }}"
-                           value="{{ raw_ml.get(feat, defaults_ml[feat]) }}">
+                    {% if feat == "Угол нашивки, град" %}
+                    <select name="ml_{{ loop.index0 }}">
+                        <option value="0" {% if (val|float) == 0 %}selected{% endif %}>0</option>
+                        <option value="90" {% if (val|float) == 90 %}selected{% endif %}>90</option>
+                    </select>
+                    {% else %}
+                    <input type="text" name="ml_{{ loop.index0 }}" value="{{ val }}">
+                    {% endif %}
                 </label>
                 {% endfor %}
             </div>
@@ -89,10 +96,17 @@
         <form method="post" action="{{ url_for('predict_ratio') }}">
             <div class="grid">
                 {% for feat in features_nn %}
+                {% set val = raw_nn.get(feat, defaults_nn[feat]) %}
                 <label>
                     <span>{{ feat }}</span>
-                    <input type="text" name="nn_{{ loop.index0 }}"
-                           value="{{ raw_nn.get(feat, defaults_nn[feat]) }}">
+                    {% if feat == "Угол нашивки, град" %}
+                    <select name="nn_{{ loop.index0 }}">
+                        <option value="0" {% if (val|float) == 0 %}selected{% endif %}>0</option>
+                        <option value="90" {% if (val|float) == 90 %}selected{% endif %}>90</option>
+                    </select>
+                    {% else %}
+                    <input type="text" name="nn_{{ loop.index0 }}" value="{{ val }}">
+                    {% endif %}
                 </label>
                 {% endfor %}
             </div>
@@ -110,7 +124,7 @@
 </main>
 
 <footer>
-    <p>Значения по умолчанию — медианы обучающей выборки (data/processed/data_clean.csv).</p>
+    <p>Значения по умолчанию — медианы очищенного датасета (data/processed/data_clean.csv).</p>
 </footer>
 
 <script>

@@ -1,12 +1,26 @@
-"""Служебный скрипт для сборки notebooks/02_models.ipynb через nbformat."""
+"""Служебный скрипт для сборки notebooks/02_models.ipynb через nbformat
+(Блок 2 ВКР: регрессионные модели для модуля упругости и прочности при
+растяжении).
+
+Скрипт задаёт тексты markdown- и code-ячеек и записывает ноутбук на диск.
+Комментарии в code-ячейках должны совпадать с комментариями в самом ноутбуке.
+Внимание: сборка создаёт ноутбук заново и без выходных данных ячеек — после
+неё ноутбук нужно выполнить, иначе результаты расчётов будут потеряны.
+
+Запуск из корня проекта:
+    .venv\\Scripts\\python scripts\\_build_models_notebook.py
+"""
 import nbformat as nbf
 
+# Ноутбук и список ячеек, который наполняется функциями md() и code() ниже
 nb = nbf.v4.new_notebook()
 cells = []
 
+# Добавляет в ноутбук текстовую (markdown) ячейку
 def md(text):
     cells.append(nbf.v4.new_markdown_cell(text))
 
+# Добавляет в ноутбук ячейку с кодом
 def code(text):
     cells.append(nbf.v4.new_code_cell(text))
 
@@ -24,7 +38,8 @@ md("""# Модели машинного обучения
 показатель — одна модель").
 """)
 
-code("""import os
+code("""# Библиотеки: sklearn — модели, Pipeline и GridSearchCV; joblib — сохранение обученных пайплайнов
+import os
 import json
 import numpy as np
 import pandas as pd
@@ -43,16 +58,21 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.svm import SVR
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+# Стиль графиков (как в EDA)
 sns.set_theme(style="whitegrid", font_scale=0.9)
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 100
 
+# Пути относительно папки notebooks/: рисунки и таблицы метрик, очищенные данные, модели для
+# приложения
 FIGURES_DIR = "../figures"
 DATA_DIR = "../data/processed"
 MODELS_DIR = "../app/models"
+# Создаём выходные папки, если их ещё нет
 os.makedirs(FIGURES_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
+# Фиксированное зерно для воспроизводимости; pandas выводит все столбцы таблиц целиком
 RANDOM_STATE = 42
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 160)
@@ -67,7 +87,9 @@ md("""## 1. Загрузка данных
 моделей (см. раздел 3), а не на этапе загрузки — это важно для корректной
 оценки качества моделей.""")
 
-code("""df = pd.read_csv(os.path.join(DATA_DIR, "data_clean.csv"), index_col=0)
+code("""# Читаем очищенный, но НЕнормализованный датасет: масштабирование выполняется внутри Pipeline, чтобы
+# не было утечки данных
+df = pd.read_csv(os.path.join(DATA_DIR, "data_clean.csv"), index_col=0)
 print("Размер датасета:", df.shape)
 df.head()
 """)
@@ -103,7 +125,8 @@ md("""## 2. Формирование признаков и целевых пер
 физические параметры материала*, не связанные напрямую с результатами
 механических испытаний на растяжение.""")
 
-code("""TARGET_MODULUS = "Модуль упругости при растяжении, ГПа"
+code("""# Два целевых показателя: для каждого строится отдельная модель
+TARGET_MODULUS = "Модуль упругости при растяжении, ГПа"
 TARGET_STRENGTH = "Прочность при растяжении, МПа"
 
 TARGETS = {
@@ -111,6 +134,8 @@ TARGETS = {
     "strength": TARGET_STRENGTH,
 }
 
+# Признаки — 11 столбцов без обоих целевых показателей: на этапе применения модели механические
+# свойства ещё неизвестны (иначе утечка данных)
 feature_cols = [c for c in df.columns if c not in (TARGET_MODULUS, TARGET_STRENGTH)]
 print(f"Количество признаков: {len(feature_cols)}")
 for c in feature_cols:
@@ -133,7 +158,8 @@ random_state=42)`.
 тестовым/валидационным данным применяется только `transform` с уже
 рассчитанными параметрами.""")
 
-code("""def make_split(target_col):
+code("""# Разбиение 70/30 с фиксированным random_state: одинаковое для всех моделей данной цели
+def make_split(target_col):
     X = df[feature_cols].copy()
     y = df[target_col].copy()
     X_train, X_test, y_train, y_test = train_test_split(
@@ -141,6 +167,7 @@ code("""def make_split(target_col):
     )
     return X_train, X_test, y_train, y_test
 
+# Выборки для каждого целевого показателя
 splits = {name: make_split(col) for name, col in TARGETS.items()}
 
 for name, (X_train, X_test, y_train, y_test) in splits.items():
@@ -160,7 +187,9 @@ md("""## 4. Модели и подбор гиперпараметров
 Каждая модель обёрнута в `Pipeline`: `MinMaxScaler` → модель, чтобы
 масштабирование признаков выполнялось корректно (см. раздел 3).""")
 
-code("""MODEL_SPECS = {
+code("""# Модели и сетки гиперпараметров для GridSearchCV. Префикс model__ — имя шага с моделью в Pipeline.
+# DummyRegressor — базовая линия для сравнения
+MODEL_SPECS = {
     "DummyRegressor": (
         DummyRegressor(),
         {"model__strategy": ["mean", "median"]},
@@ -216,6 +245,7 @@ code("""MODEL_SPECS = {
     ),
 }
 
+# Метрики регрессии: MAE, MSE, RMSE (корень из MSE) и R²
 def regression_metrics(y_true, y_pred):
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
@@ -224,7 +254,9 @@ def regression_metrics(y_true, y_pred):
     return {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2}
 """)
 
-code("""results = {}       # results[target_name][model_name] = dict(metrics + best_params)
+code("""# Словари результатов: метрики с лучшими параметрами и обученные объекты GridSearchCV по целям и
+# моделям
+results = {}       # results[target_name][model_name] = dict(metrics + best_params)
 fitted_models = {}  # fitted_models[target_name][model_name] = fitted GridSearchCV
 
 for target_name, (X_train, X_test, y_train, y_test) in splits.items():
@@ -233,22 +265,31 @@ for target_name, (X_train, X_test, y_train, y_test) in splits.items():
     fitted_models[target_name] = {}
 
     for model_name, (estimator, param_grid) in MODEL_SPECS.items():
+        # Pipeline: MinMaxScaler обучается только на обучающих фолдах, поэтому информация из
+        # валидационных фолдов в масштабирование не попадает
         pipe = Pipeline([
             ("scaler", MinMaxScaler()),
             ("model", estimator),
         ])
+        # Подбор гиперпараметров по 10-блочной кросс-валидации; критерий — R² (отбор по CV, а не по
+        # тесту)
         grid = GridSearchCV(
             pipe, param_grid=param_grid, cv=10,
             scoring="r2", n_jobs=-1,
         )
+        # Поиск по сетке на обучающей выборке; лучшая комбинация затем переобучается на всей
+        # обучающей выборке
         grid.fit(X_train, y_train)
 
+        # Метрики считаем и на train, и на test; тест — только для информации, в отборе он не
+        # участвует
         y_train_pred = grid.predict(X_train)
         y_test_pred = grid.predict(X_test)
 
         train_metrics = regression_metrics(y_train, y_train_pred)
         test_metrics = regression_metrics(y_test, y_test_pred)
 
+        # pred_std_test нужен, чтобы позже обнаружить вырожденные модели с постоянным прогнозом
         results[target_name][model_name] = {
             "best_params": grid.best_params_,
             "cv_r2": grid.best_score_,
@@ -268,7 +309,8 @@ md("""## 5. Таблицы метрик
 обучающей и тестовой выборках для всех моделей и сохраняем её в
 `figures/metrics_modulus.csv` и `figures/metrics_strength.csv`.""")
 
-code("""def build_metrics_table(target_name):
+code("""# Сводная таблица по одной цели: гиперпараметры, CV_R2 и метрики train/test для каждой модели
+def build_metrics_table(target_name):
     rows = []
     for model_name, res in results[target_name].items():
         rows.append({
@@ -284,9 +326,11 @@ code("""def build_metrics_table(target_name):
             "RMSE_test": res["test"]["RMSE"],
             "R2_test": res["test"]["R2"],
         })
+    # Сортировка по CV_R2 (кросс-валидация) — главный критерий сравнения моделей
     table = pd.DataFrame(rows).sort_values("CV_R2", ascending=False).reset_index(drop=True)
     return table
 
+# Таблицы для обеих целей и их сохранение в figures/ (utf-8-sig — для корректного открытия в Excel)
 metrics_tables = {name: build_metrics_table(name) for name in TARGETS}
 
 metrics_tables["modulus"].to_csv(os.path.join(FIGURES_DIR, "metrics_modulus.csv"), index=False, encoding="utf-8-sig")
@@ -305,11 +349,13 @@ md("""## 6. Графики
 
 ### 6.1 Сравнение R² на тестовой выборке по всем моделям""")
 
-code("""TARGET_LABELS = {
+code("""# Подписи целевых показателей для заголовков графиков
+TARGET_LABELS = {
     "modulus": "Модуль упругости при растяжении, ГПа",
     "strength": "Прочность при растяжении, МПа",
 }
 
+# R² на тесте для всех моделей; DummyRegressor выделен красным, чтобы сравнивать с базовой линией
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 for ax, target_name in zip(axes, TARGETS):
     table = metrics_tables[target_name].sort_values("R2_test", ascending=True)
@@ -321,6 +367,7 @@ for ax, target_name in zip(axes, TARGETS):
 
 fig.suptitle("Сравнение R² на тестовой выборке по моделям (красный — DummyRegressor)", fontsize=13)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "r2_comparison.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -347,27 +394,33 @@ md("""### 6.2 Выбор лучшей модели для каждого пок�
 
 Среди оставшихся моделей выбирается модель с максимальным `CV_R2`.""")
 
-code("""best_model_names = {}
+code("""# Отбор лучшей модели по CV_R2 (кросс-валидация); тестовая выборка в отборе не участвует
+best_model_names = {}
 excluded_constant = {}
 
 for target_name in TARGETS:
     table = metrics_tables[target_name]
     res = results[target_name]
 
+    # Вырожденные модели: практически постоянный прогноз на тесте (std предсказаний < 1e-6),
+    # например Lasso, обнуливший все коэффициенты
     constant_models = [
         m for m in table["Модель"]
         if m != "DummyRegressor" and res[m]["pred_std_test"] < 1e-6
     ]
     excluded_constant[target_name] = constant_models
 
+    # Кандидаты: все модели, кроме DummyRegressor и вырожденных; сортировка по CV_R2
     candidates = table[
         (table["Модель"] != "DummyRegressor")
         & (~table["Модель"].isin(constant_models))
     ].sort_values("CV_R2", ascending=False)
 
+    # Лучшая модель — первая строка (максимальный CV_R2)
     best_row = candidates.iloc[0]
     best_model_names[target_name] = best_row["Модель"]
 
+    # CV_R2 DummyRegressor нужен для честного сравнения с выбранной моделью
     dummy_cv_r2 = table.loc[table["Модель"] == "DummyRegressor", "CV_R2"].values[0]
 
     print(f"--- {TARGET_LABELS[target_name]} ---")
@@ -380,7 +433,8 @@ for target_name in TARGETS:
 
 md("""### 6.3 Диаграмма рассеяния: предсказание vs. фактическое значение (лучшая модель)""")
 
-code("""fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+code("""# Диаграмма «предсказание vs. факт» на тесте для лучшей модели каждой цели
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
 for ax, target_name in zip(axes, TARGETS):
     X_train, X_test, y_train, y_test = splits[target_name]
@@ -389,6 +443,7 @@ for ax, target_name in zip(axes, TARGETS):
     y_pred = best_grid.predict(X_test)
 
     ax.scatter(y_test, y_pred, alpha=0.5, s=20, color="teal")
+    # Общие границы осей, чтобы диагональ идеального предсказания охватывала все точки
     lims = [min(y_test.min(), y_pred.min()), max(y_test.max(), y_pred.max())]
     ax.plot(lims, lims, "r--", linewidth=1.2, label="Идеальное предсказание")
     ax.set_xlabel("Фактическое значение")
@@ -398,6 +453,7 @@ for ax, target_name in zip(axes, TARGETS):
 
 fig.suptitle("Предсказание vs. фактическое значение (лучшая модель, тестовая выборка)", fontsize=13)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "prediction_vs_actual_best_model.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -408,9 +464,12 @@ md("""### 6.4 Важность признаков (RandomForestRegressor)
 прогнозирования — независимо от того, оказался ли именно он лучшей моделью
 (это отдельный диагностический график, помогающий понять вклад признаков).""")
 
-code("""fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+code("""# Важность признаков берём у RandomForest независимо от того, какая модель оказалась лучшей
+# (диагностический график)
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
 for ax, target_name in zip(axes, TARGETS):
+    # Достаём обученную модель из Pipeline по имени шага model (после масштабирования)
     rf_grid = fitted_models[target_name]["RandomForestRegressor"]
     rf_model = rf_grid.best_estimator_.named_steps["model"]
     importances = pd.Series(rf_model.feature_importances_, index=feature_cols)
@@ -422,6 +481,7 @@ for ax, target_name in zip(axes, TARGETS):
 
 fig.suptitle("Важность признаков по RandomForestRegressor", fontsize=13)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "feature_importance_rf.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -434,7 +494,8 @@ md("""## 7. Итоговый выбор модели по каждому объ�
 приведён только для информации. Если `CV_R2` низкий или отрицательный, это
 отражено без приукрашивания.""")
 
-code("""for target_name in TARGETS:
+code("""# Сводка по каждой цели: лучшая модель против DummyRegressor, без приукрашивания
+for target_name in TARGETS:
     table = metrics_tables[target_name]
     dummy_row = table.loc[table["Модель"] == "DummyRegressor"].iloc[0]
     best_name = best_model_names[target_name]
@@ -444,6 +505,8 @@ code("""for target_name in TARGETS:
     print(f"DummyRegressor:  CV_R2={dummy_row['CV_R2']:.4f}, R2_test={dummy_row['R2_test']:.4f}, RMSE_test={dummy_row['RMSE_test']:.4f}")
     print(f"Лучшая модель:   {best_name}")
     print(f"                 CV_R2={best_row['CV_R2']:.4f}, R2_test={best_row['R2_test']:.4f}, RMSE_test={best_row['RMSE_test']:.4f}")
+    # Положительный прирост CV_R2 означает, что модель лучше baseline; около нуля или отрицательный
+    # — не лучше
     improvement = best_row["CV_R2"] - dummy_row["CV_R2"]
     print(f"Прирост CV_R2 относительно DummyRegressor: {improvement:+.4f}")
     print()
@@ -497,13 +560,16 @@ md("""## 8. Сохранение лучших пайплайнов
 помощью `joblib`, чтобы их можно было использовать в приложении без
 повторного обучения.""")
 
-code("""MODEL_FILENAMES = {
+code("""# Имена файлов сохраняемых пайплайнов
+MODEL_FILENAMES = {
     "modulus": "best_model_modulus.joblib",
     "strength": "best_model_strength.joblib",
 }
 
 for target_name in TARGETS:
     best_name = best_model_names[target_name]
+    # Сохраняем полный Pipeline (скейлер + лучшая модель), чтобы приложение применяло то же
+    # масштабирование, что и при обучении
     best_pipeline = fitted_models[target_name][best_name].best_estimator_
     path = os.path.join(MODELS_DIR, MODEL_FILENAMES[target_name])
     joblib.dump(best_pipeline, path)

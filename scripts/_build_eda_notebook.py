@@ -1,12 +1,25 @@
-"""Служебный скрипт для сборки notebooks/01_EDA.ipynb через nbformat."""
+"""Служебный скрипт для сборки notebooks/01_EDA.ipynb через nbformat
+(Блок 1 ВКР: разведочный анализ данных).
+
+Скрипт задаёт тексты markdown- и code-ячеек и записывает ноутбук на диск.
+Комментарии в code-ячейках должны совпадать с комментариями в самом ноутбуке.
+Внимание: сборка создаёт ноутбук заново и без выходных данных ячеек — после
+неё ноутбук нужно выполнить, иначе результаты расчётов будут потеряны.
+
+Запуск из корня проекта:
+    .venv\\Scripts\\python scripts\\_build_eda_notebook.py
+"""
 import nbformat as nbf
 
+# Ноутбук и список ячеек, который наполняется функциями md() и code() ниже
 nb = nbf.v4.new_notebook()
 cells = []
 
+# Добавляет в ноутбук текстовую (markdown) ячейку
 def md(text):
     cells.append(nbf.v4.new_markdown_cell(text))
 
+# Добавляет в ноутбук ячейку с кодом
 def code(text):
     cells.append(nbf.v4.new_code_cell(text))
 
@@ -24,23 +37,28 @@ md("""# Разведочный анализ данных (EDA)
 6. Сохранение очищенного и нормализованного датасетов.
 """)
 
-code("""import os
+code("""# Библиотеки: pandas/numpy — данные, matplotlib/seaborn — графики, MinMaxScaler — нормализация
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 
+# Единый стиль графиков; обычный дефис вместо юникодного минуса (надёжнее отображается шрифтами)
 sns.set_theme(style="whitegrid", font_scale=0.9)
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 100
 
+# Пути относительно папки notebooks/: рисунки, исходные данные, обработанные данные
 FIGURES_DIR = "../figures"
 DATA_DIR = "../data"
 PROCESSED_DIR = "../data/processed"
+# Создаём выходные папки, если их ещё нет
 os.makedirs(FIGURES_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
+# Фиксированное зерно для воспроизводимости; pandas выводит все столбцы таблиц целиком
 RANDOM_STATE = 42
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 160)
@@ -56,29 +74,35 @@ md("""## 1. Загрузка и объединение данных
 через **INNER JOIN**, чтобы оставить только образцы, присутствующие в обоих
 файлах.""")
 
-code("""df_bp = pd.read_excel(os.path.join(DATA_DIR, "X_bp.xlsx"), index_col=0)
+code("""# Читаем два исходных файла; первый столбец — индекс образца (index_col=0)
+df_bp = pd.read_excel(os.path.join(DATA_DIR, "X_bp.xlsx"), index_col=0)
 df_nup = pd.read_excel(os.path.join(DATA_DIR, "X_nup.xlsx"), index_col=0)
 
 print("X_bp.xlsx  shape:", df_bp.shape)
 print("X_nup.xlsx shape:", df_nup.shape)
 
+# Объединяем таблицы по индексу (INNER JOIN): остаются только образцы, присутствующие в обоих файлах
 df = df_bp.join(df_nup, how="inner")
 print("Объединённый датасет (INNER JOIN) shape:", df.shape)
 df.head()
 """)
 
-code("""df.info()
+code("""# Типы данных и число непустых значений по столбцам
+df.info()
 """)
 
 md("""### Типы данных, пропуски и дубликаты""")
 
-code("""dtypes_table = df.dtypes.rename("Тип данных").to_frame()
+code("""# Типы данных столбцов
+dtypes_table = df.dtypes.rename("Тип данных").to_frame()
 display(dtypes_table)
 
+# Пропуски: абсолютное число и доля от размера выборки
 missing = df.isnull().sum().rename("Количество пропусков").to_frame()
 missing["Доля пропусков, %"] = (missing["Количество пропусков"] / len(df) * 100).round(2)
 display(missing)
 
+# Проверка на полные дубликаты строк
 n_duplicates = df.duplicated().sum()
 print(f"Количество полных дубликатов строк: {n_duplicates}")
 print(f"Итоговый размер датасета: {df.shape[0]} строк, {df.shape[1]} столбцов")
@@ -91,8 +115,10 @@ md("""## 2. Описательная статистика
 отклонение, минимум, максимум и квартили. Таблица сохраняется в
 `figures/descriptive_stats.csv`.""")
 
-code("""desc = df.describe().T
+code("""# Описательная статистика: describe() плюс отдельный столбец с медианой
+desc = df.describe().T
 desc["медиана"] = df.median()
+# Русские названия статистик (50-й перцентиль совпадает с медианой, поэтому помечен как дубль)
 desc = desc.rename(columns={
     "count": "количество",
     "mean": "среднее",
@@ -103,9 +129,11 @@ desc = desc.rename(columns={
     "75%": "75-й перцентиль",
     "max": "максимум",
 })
+# Оставляем нужные статистики в удобном порядке (дубль медианы убираем)
 desc = desc[["количество", "среднее", "медиана", "стд. отклонение",
              "минимум", "25-й перцентиль", "75-й перцентиль", "максимум"]]
 
+# Сохраняем таблицу в figures/ (utf-8-sig — чтобы кириллица корректно открывалась в Excel)
 desc.to_csv(os.path.join(FIGURES_DIR, "descriptive_stats.csv"), encoding="utf-8-sig")
 desc
 """)
@@ -119,24 +147,28 @@ md("""## 3. Визуализация данных
 кривой плотности (KDE), чтобы оценить форму распределения и наличие
 асимметрии.""")
 
-code("""cols = df.columns.tolist()
+code("""# Сетка графиков: 3 столбца и столько строк, сколько нужно для всех признаков
+cols = df.columns.tolist()
 n_cols = 3
 n_rows = int(np.ceil(len(cols) / n_cols))
 
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 axes = axes.flatten()
 
+# Гистограмма с кривой плотности (KDE) для каждого признака
 for i, col in enumerate(cols):
     sns.histplot(df[col], kde=True, ax=axes[i], color="steelblue")
     axes[i].set_title(col, fontsize=10)
     axes[i].set_xlabel(col, fontsize=8)
     axes[i].set_ylabel("Частота", fontsize=8)
 
+# Удаляем лишние пустые подграфики в конце сетки
 for j in range(len(cols), len(axes)):
     fig.delaxes(axes[j])
 
 fig.suptitle("Распределения признаков (гистограммы с KDE)", fontsize=14, y=1.0)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "histograms_kde.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -146,9 +178,11 @@ md("""### 3.2 Boxplot-ы (диаграммы размаха)
 Диаграммы размаха помогают визуально оценить разброс значений и наличие
 потенциальных выбросов по каждому признаку.""")
 
-code("""fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
+code("""# Сетка и список признаков (cols, n_rows, n_cols) берём из предыдущей ячейки
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 axes = axes.flatten()
 
+# Boxplot по каждому признаку до очистки: на нём видны потенциальные выбросы
 for i, col in enumerate(cols):
     sns.boxplot(y=df[col], ax=axes[i], color="lightcoral")
     axes[i].set_title(col, fontsize=10)
@@ -159,6 +193,7 @@ for j in range(len(cols), len(axes)):
 
 fig.suptitle("Диаграммы размаха признаков (до очистки от выбросов)", fontsize=14, y=1.0)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "boxplots_before_cleaning.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -168,8 +203,11 @@ md("""### 3.3 Pairplot (диаграммы рассеяния по парам п
 Матрица диаграмм рассеяния показывает взаимосвязи между всеми парами
 признаков одновременно.""")
 
-code("""pairplot = sns.pairplot(df, diag_kind="kde", plot_kws={"alpha": 0.4, "s": 12})
+code("""# Матрица диаграмм рассеяния по парам признаков; на диагонали — KDE; точки прозрачные из-за их
+# большого числа
+pairplot = sns.pairplot(df, diag_kind="kde", plot_kws={"alpha": 0.4, "s": 12})
 pairplot.fig.suptitle("Диаграммы рассеяния по парам признаков", y=1.01, fontsize=16)
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 pairplot.savefig(os.path.join(FIGURES_DIR, "pairplot.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -178,18 +216,23 @@ md("""### 3.4 Тепловая карта корреляций
 
 Матрица корреляций Пирсона между всеми числовыми признаками.""")
 
-code("""corr = df.corr()
+code("""# Матрица корреляций Пирсона между всеми признаками
+corr = df.corr()
 
 fig, ax = plt.subplots(figsize=(12, 10))
+# Тепловая карта: центр шкалы в нуле, значения коэффициентов подписаны в ячейках
 sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", center=0,
             square=True, linewidths=0.5, cbar_kws={"label": "Коэффициент корреляции"}, ax=ax)
 ax.set_title("Тепловая карта корреляций между признаками", fontsize=14)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "correlation_heatmap.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
 
-code("""corr_pairs = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool)).stack()
+code("""# Берём только верхний треугольник матрицы (без диагонали и дублей пар) и вытягиваем его в ряд пар
+corr_pairs = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool)).stack()
+# Сортируем пары по модулю коэффициента: самые сильные связи — сверху
 corr_pairs = corr_pairs.sort_values(key=lambda s: s.abs(), ascending=False)
 print("Топ-10 пар признаков по модулю коэффициента корреляции:")
 corr_pairs.head(10)
@@ -207,9 +250,11 @@ IQR = Q3 - Q1 и границы выбросов:
 Значения за пределами границ считаются выбросами. Строка удаляется из
 датасета, если хотя бы один признак в ней является выбросом.""")
 
-code("""outlier_counts = {}
+code("""# Счётчики выбросов по признакам и общая маска строк, где есть хотя бы один выброс
+outlier_counts = {}
 outlier_mask_total = pd.Series(False, index=df.index)
 
+# Метод IQR: выбросом считается значение за границами Q1 − 1.5·IQR и Q3 + 1.5·IQR
 for col in cols:
     q1 = df[col].quantile(0.25)
     q3 = df[col].quantile(0.75)
@@ -220,21 +265,25 @@ for col in cols:
     outlier_counts[col] = int(col_mask.sum())
     outlier_mask_total |= col_mask
 
+# Сводная таблица: число выбросов и их доля по каждому признаку
 outliers_table = pd.Series(outlier_counts, name="Количество выбросов").to_frame()
 outliers_table["Доля от выборки, %"] = (outliers_table["Количество выбросов"] / len(df) * 100).round(2)
 display(outliers_table)
 
+# Строка удаляется, если выброс есть хотя бы в одном признаке
 n_rows_to_remove = int(outlier_mask_total.sum())
 print(f"Строк с хотя бы одним выбросом: {n_rows_to_remove}")
 print(f"Размер датасета до очистки: {df.shape}")
 
+# Очищенный датасет: оставляем строки без выбросов (copy() — чтобы не работать с представлением df)
 df_clean = df.loc[~outlier_mask_total].copy()
 print(f"Размер датасета после очистки: {df_clean.shape}")
 """)
 
 md("""### Диаграммы размаха после очистки от выбросов""")
 
-code("""fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
+code("""# Те же boxplot-ы, но по очищенным данным — для сравнения с рисунком «до очистки»
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 axes = axes.flatten()
 
 for i, col in enumerate(cols):
@@ -247,6 +296,7 @@ for j in range(len(cols), len(axes)):
 
 fig.suptitle("Диаграммы размаха признаков (после очистки от выбросов)", fontsize=14, y=1.0)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "boxplots_after_cleaning.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -258,13 +308,18 @@ md("""## 5. Нормализация методом MinMaxScaler
 `MinMaxScaler`. Сравниваем гистограммы и таблицу минимумов/максимумов до и
 после нормализации.""")
 
-code("""scaler = MinMaxScaler()
+code("""# Нормализация в диапазон [0, 1]. Здесь она нужна только для визуализации и сохранения датасета; в
+# моделях масштабирование выполняется отдельно (Pipeline в 02_models, скейлер на train в
+# 03_neural_network)
+scaler = MinMaxScaler()
 df_normalized = pd.DataFrame(
     scaler.fit_transform(df_clean),
     columns=df_clean.columns,
     index=df_clean.index,
 )
 
+# Таблица минимумов и максимумов до и после нормализации — контроль, что все значения попали в [0,
+# 1]
 minmax_before_after = pd.DataFrame({
     "минимум до": df_clean.min(),
     "максимум до": df_clean.max(),
@@ -275,7 +330,8 @@ minmax_before_after.to_csv(os.path.join(FIGURES_DIR, "minmax_before_after.csv"),
 minmax_before_after
 """)
 
-code("""fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
+code("""# Гистограммы признаков до нормализации (очищенные данные)
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 axes = axes.flatten()
 
 for i, col in enumerate(cols):
@@ -289,11 +345,14 @@ for j in range(len(cols), len(axes)):
 
 fig.suptitle("Распределения признаков ДО нормализации (после очистки от выбросов)", fontsize=14, y=1.0)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "histograms_before_normalization.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
 
-code("""fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
+code("""# Гистограммы тех же признаков после нормализации: форма распределений сохраняется, меняется только
+# масштаб
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 axes = axes.flatten()
 
 for i, col in enumerate(cols):
@@ -307,6 +366,7 @@ for j in range(len(cols), len(axes)):
 
 fig.suptitle("Распределения признаков ПОСЛЕ нормализации (MinMaxScaler)", fontsize=14, y=1.0)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "histograms_after_normalization.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -317,9 +377,11 @@ md("""## 6. Сохранение обработанных данных
 Сохраняем очищенный (но ещё не нормализованный) датасет и нормализованный
 датасет в `data/processed/`.""")
 
-code("""clean_path = os.path.join(PROCESSED_DIR, "data_clean.csv")
+code("""# Сохраняем два датасета: очищенный (для моделей) и нормализованный
+clean_path = os.path.join(PROCESSED_DIR, "data_clean.csv")
 normalized_path = os.path.join(PROCESSED_DIR, "data_normalized.csv")
 
+# utf-8-sig — чтобы кириллица в заголовках корректно открывалась в Excel
 df_clean.to_csv(clean_path, encoding="utf-8-sig")
 df_normalized.to_csv(normalized_path, encoding="utf-8-sig")
 
@@ -348,7 +410,8 @@ md("""## 7. Анализ структуры исходных данных
 **до** удаления выбросов (1023 строки, индексы 0–1022); предыдущие разделы
 ноутбука не изменялись.""")
 
-code("""from itertools import product
+code("""# Импорты раздела 7: проверка структуры данных (сетка плана, взаимная информация, кросс-валидация)
+from itertools import product
 
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -359,10 +422,14 @@ from sklearn.model_selection import (GroupKFold, KFold, LeaveOneOut,
 from sklearn.tree import DecisionTreeRegressor
 
 RANDOM_STATE = 42
+# Раздел 7 работает с объединённой таблицей ДО удаления выбросов; assert фиксируют ожидаемую форму и
+# порядок индексов
 df_full = df_bp.join(df_nup, how="inner")  # объединённая таблица до очистки
 assert df_full.shape == (1023, 13)
 assert (df_full.index == np.arange(1023)).all()  # позиция строки = индекс
 
+# Целевые переменные, признаки и константы раздела: размер экспериментальной части X_bp (23 строки)
+# и плана нашивки X_nup (40 строк)
 TARGETS = ["Модуль упругости при растяжении, ГПа", "Прочность при растяжении, МПа"]
 FEATURES = [c for c in df_full.columns if c not in TARGETS]
 DENSITY = "Поверхностная плотность, г/м2"
@@ -379,9 +446,12 @@ md("""### 7.1 Строки 0–22 таблицы X_bp: эксперимента�
 Сравниваем число уникальных значений в каждом столбце X_bp для первых
 23 строк и для остальных 1000 строк.""")
 
-code("""bp_exp = df_bp.iloc[:N_EXP]
+code("""# Делим X_bp на экспериментальные строки (0–22) и остальные (23–1022)
+bp_exp = df_bp.iloc[:N_EXP]
 bp_gen = df_bp.iloc[N_EXP:]
 
+# Число уникальных значений по столбцам в обеих частях: в экспериментальных строках есть повторы, в
+# остальных всё уникально
 uniq = pd.DataFrame({
     f"Уникальных значений, строки 0–22 (n={len(bp_exp)})": bp_exp.nunique(),
     f"Уникальных значений, строки 23–1022 (n={len(bp_gen)})": bp_gen.nunique(),
@@ -397,10 +467,12 @@ md("""В строках 0–22 столбцы «Модуль упругости 
 23–1022 каждое значение в каждом столбце уникально (1000 из 1000).
 Группируем первые 23 строки по «Поверхностной плотности».""")
 
-code("""DEPENDENT = ["Модуль упругости при растяжении, ГПа",
+code("""# Три показателя, которые, как проверяем ниже, зависят только от поверхностной плотности
+DEPENDENT = ["Модуль упругости при растяжении, ГПа",
              "Прочность при растяжении, МПа",
              "Потребление смолы, г/м2"]
 
+# Группируем экспериментальные строки по поверхностной плотности: каждая группа — один материал
 grouped = bp_exp.groupby(DENSITY)
 materials = grouped[DEPENDENT].first()
 materials.insert(0, "Число строк", grouped.size())
@@ -430,13 +502,17 @@ md("""Три показателя («Модуль упругости при ра
 Проверяем, совпадают ли повторяющиеся значения 738.7368, 111.86, 22.27 и
 284.62 со средним или медианой своего столбца (по всем 1023 строкам X_bp).""")
 
-code("""REPEATED = {
+code("""# Повторяющиеся в строках 0–22 значения (приблизительные): проверяем, не равны ли они среднему или
+# медиане столбца
+REPEATED = {
     "модуль упругости, ГПа": 738.7368,
     "Количество отвердителя, м.%": 111.86,
     "Содержание эпоксидных групп,%_2": 22.27,
     "Температура вспышки, С_2": 284.62,
 }
 
+# Для каждого столбца находим точное повторяющееся значение, ближайшее к заданному, и сравниваем его
+# со средним и медианой по всем строкам X_bp
 rows = []
 for col, approx in REPEATED.items():
     counts = bp_exp[col].value_counts()
@@ -456,9 +532,11 @@ for col, approx in REPEATED.items():
         "Совпадает со средним/медианой": bool(
             np.isclose(value, mean, rtol=1e-6) or np.isclose(value, median, rtol=1e-6)),
     })
+# Таблица сравнения: отклонения повторяющихся значений от среднего и медианы в процентах
 repeated_table = pd.DataFrame(rows).set_index("Столбец")
 display(repeated_table.round(4))
 
+# Все повторяющиеся значения в строках 0–22 для столбцов, кроме первого (с числом повторов)
 print("Все значения, повторяющиеся в строках 0–22 (значение: число повторов):")
 for col in list(REPEATED)[1:]:
     counts = bp_exp[col].value_counts()
@@ -479,13 +557,18 @@ md("""### 7.2 Строки 0–39 таблицы X_nup: план экспери�
 Проверяем, образуют ли первые 40 строк X_nup факторный план
 «угол × шаг × плотность нашивки».""")
 
-code("""plan = df_nup.iloc[:N_PLAN]
+code("""# Первые 40 строк X_nup проверяем на соответствие факторному плану; строки из одних нулей исключаем
+# из сетки
+plan = df_nup.iloc[:N_PLAN]
 zero_rows = plan[(plan == 0).all(axis=1)]
 plan_main = plan.drop(zero_rows.index)
 
+# Ожидаемая сетка плана: угол {0, 90} × шаг {4, 5, 7, 9, 10} × плотность {47, 57, 60, 70} —
+# сравниваем с фактическими комбинациями
 expected = set(product([0, 90], [4, 5, 7, 9, 10], [47, 57, 60, 70]))
 actual = set(map(tuple, plan_main.to_numpy().tolist()))
 
+# Диагностика: какие комбинации присутствуют, отсутствуют, лишние или повторяются
 print("Уникальные значения в строках 0–39:")
 for col in plan.columns:
     print(f"  {col}: {sorted(plan[col].unique().tolist())}")
@@ -498,10 +581,12 @@ print("Повторяющихся комбинаций:", int(plan_main.duplicat
 print("Строки упорядочены по (угол, шаг, плотность):",
       plan_main.equals(plan_main.sort_values([ANGLE, STEP, PITCH])))
 
+# Кросс-таблица (угол, шаг) × плотность показывает заполнение сетки
 display(pd.crosstab([plan_main[ANGLE], plan_main[STEP]], plan_main[PITCH])
         .rename_axis(index=["Угол нашивки, град", "Шаг нашивки"],
                      columns="Плотность нашивки"))
 
+# Остальные строки X_nup (40–1022): шаг и плотность — непрерывные числа, угол — только 0 и 90
 rest_nup = df_full[[ANGLE, STEP, PITCH]].iloc[N_PLAN:]
 print("Строки 40–1022 (n=%d): уникальных значений" % len(rest_nup))
 print(rest_nup.nunique().to_string())
@@ -520,9 +605,13 @@ md("""Строки 0–39 — это перебор сетки параметр�
 соответствующим строкам X_bp: если бы нашивка была характеристикой образца,
 образцы одного материала имели бы согласованные параметры нашивки.""")
 
-code("""link = bp_exp[[DENSITY] + DEPENDENT].join(plan)
+code("""# Сопоставляем экспериментальные строки X_bp с параметрами нашивки из строк X_nup с теми же номерами
+link = bp_exp[[DENSITY] + DEPENDENT].join(plan)
+# Комбинация нашивки в виде строки «угол/шаг/плотность»
 link["комбинация нашивки"] = link[[ANGLE, STEP, PITCH]].apply(
     lambda r: "/".join(f"{v:g}" for v in r), axis=1)
+# Для каждого материала считаем строки, различные комбинации нашивки и различные значения модуля
+# упругости
 per_material = link.groupby(DENSITY).agg(
     **{"Число строк": ("комбинация нашивки", "size"),
        "Различных комбинаций нашивки": ("комбинация нашивки", "nunique"),
@@ -549,20 +638,26 @@ md("""### 7.3 Строки с 40-й: есть ли связь признаков
 - R² модели RandomForest (200 деревьев) при 5-блочной кросс-валидации, рядом —
   `DummyRegressor` и RandomForest на чистом шуме.""")
 
-code("""data_part = df_full.iloc[N_PLAN:]  # строки 40–1022
+code("""# Часть данных начиная со строки 40: без экспериментальных строк и сетки нашивки
+data_part = df_full.iloc[N_PLAN:]  # строки 40–1022
 X_part = data_part[FEATURES]
 n_part = len(data_part)
 print(f"Наблюдений: {n_part}, признаков: {X_part.shape[1]}")
 print(f"Порог значимости |r| (5 %, без поправки на множественные сравнения): "
       f"{1.96 / np.sqrt(n_part):.4f}")
 
+# Референс чистого шума: 30 наборов случайных признаков N(0, 1) той же формы, что и реальные
+# признаки
 N_NOISE = 30
 rng = np.random.default_rng(RANDOM_STATE)
 noise_sets = [rng.normal(size=X_part.shape) for _ in range(N_NOISE)]
 
+# 5-блочная кросс-валидация с перемешиванием и RandomForest (200 деревьев)
 cv5 = KFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 rf = RandomForestRegressor(n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1)
 
+# Для каждой цели: корреляция, взаимная информация (MI) на данных и на шуме, R² RandomForest и
+# DummyRegressor, R² RandomForest на шуме
 summary_rows, mi_results = [], {}
 for target in TARGETS:
     y = data_part[target]
@@ -592,18 +687,22 @@ for target in TARGETS:
         "R² RandomForest на шуме, CV (среднее)": r2_rf_noise.mean(),
     })
 
+# Сводная таблица (округлена до 4 знаков) и её сохранение в figures/
 data_structure = pd.DataFrame(summary_rows).set_index("Целевая переменная")
 data_structure.round(4).to_csv(
     os.path.join(FIGURES_DIR, "data_structure.csv"), encoding="utf-8-sig")
 display(data_structure.round(4).T)
 """)
 
-code("""mi_table = pd.DataFrame({t: mi_results[t][0] for t in TARGETS}).round(4)
+code("""# Таблица взаимной информации по каждому признаку и каждой цели
+mi_table = pd.DataFrame({t: mi_results[t][0] for t in TARGETS}).round(4)
 mi_table.index.name = "Признак"
 display(mi_table)
 """)
 
-code("""fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), sharex=True)
+code("""# Столбчатые диаграммы MI по признакам; вертикальные линии — среднее, 95-й перцентиль и максимум по
+# шуму
+fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), sharex=True)
 for ax, target in zip(axes, TARGETS):
     mi_data, mi_noise = mi_results[target]
     mi_sorted = mi_data.sort_values()
@@ -621,6 +720,7 @@ axes[0].set_ylabel("Признак")
 fig.suptitle("Взаимная информация признаков с целевой переменной: данные "
              "(строки 40–1022) и случайный шум", fontsize=14)
 fig.tight_layout()
+# Сохраняем рисунок в PNG с разрешением 300 dpi (требование проекта)
 fig.savefig(os.path.join(FIGURES_DIR, "mutual_info_vs_noise.png"), dpi=300, bbox_inches="tight")
 plt.show()
 """)
@@ -660,19 +760,27 @@ md("""### 7.4 Только 23 экспериментальные строки: �
 R² считается по объединённым предсказаниям всех блоков. Для сравнения —
 `DummyRegressor` (среднее по обучающей части) в тех же схемах.""")
 
-code("""exp = df_full.iloc[:N_EXP]
+code("""# Только экспериментальные строки 0–22 и единственный признак — поверхностная плотность
+exp = df_full.iloc[:N_EXP]
 x_exp = exp[[DENSITY]]
 groups = exp[DENSITY].to_numpy()  # тип материала = значение поверхностной плотности
 
+# GroupKFold: в тестовый блок попадает целый материал; assert проверяет, что в каждом блоке ровно
+# одна группа
 gkf = GroupKFold(n_splits=4)
 assert all(len(set(groups[test])) == 1 for _, test in gkf.split(x_exp, groups=groups))
 
+# Две схемы проверки: LeaveOneOut (материал остаётся в обучении) и GroupKFold (материал модели не
+# виден)
 schemes = {"LeaveOneOut": (LeaveOneOut(), None),
            "GroupKFold по типу материала (4 группы)": (gkf, groups)}
 
+# Дерево без ограничения глубины (склонно к запоминанию) и константный baseline для сравнения
 tree = DecisionTreeRegressor(random_state=RANDOM_STATE)
 dummy = DummyRegressor()
 
+# Для каждой цели: R² при обучении на всех строках (это не валидация) и R² по объединённым прогнозам
+# кросс-валидации
 rows, predictions = [], {}
 for target in TARGETS:
     y = exp[target]
@@ -689,13 +797,15 @@ for target in TARGETS:
                      "R² DecisionTree": r2_score(y, pred_tree),
                      "R² DummyRegressor": r2_score(y, pred_dummy)})
 
+# Сводная таблица и её сохранение в figures/
 real_rows_model = pd.DataFrame(rows)
 real_rows_model.round(4).to_csv(
     os.path.join(FIGURES_DIR, "real_rows_model.csv"), index=False, encoding="utf-8-sig")
 display(real_rows_model.round(4))
 """)
 
-code("""for target in TARGETS:
+code("""# Прогнозы по материалам: факт и прогнозы двух схем (по одной строке на материал)
+for target in TARGETS:
     by_material = predictions[target].copy()
     by_material[DENSITY] = groups
     print(target)

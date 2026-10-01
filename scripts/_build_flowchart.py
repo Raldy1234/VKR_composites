@@ -1,15 +1,26 @@
 """Строит блок-схему всего процесса ВКР и сохраняет её в figures/flowchart.png
-(300 dpi, подписи на русском языке)."""
+(300 dpi, подписи на русском языке).
+
+Схема показывает общую цепочку (загрузка, объединение, EDA, очистка выбросов),
+затем три ветви — визуализация EDA, модели машинного обучения и нейронная
+сеть — и их слияние в веб-приложении Flask.
+
+Запуск из корня проекта:
+    .venv\\Scripts\\python scripts\\_build_flowchart.py
+"""
 import os
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
+# Обычный дефис вместо юникодного минуса (надёжнее отображается шрифтами)
 plt.rcParams["axes.unicode_minus"] = False
 
+# Рисунок сохраняем в figures/ в корне проекта (скрипт лежит в scripts/)
 FIGURES_DIR = os.path.join(os.path.dirname(__file__), "..", "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
+# Цвета блоков: основная цепочка (сине-зелёная), ветви моделей (зелёная) и EDA (жёлтая)
 STAGE_COLOR = "#dbe9ee"
 STAGE_EDGE = "#2c5f6f"
 SPLIT_COLOR = "#eaf5ee"
@@ -19,12 +30,14 @@ TEXT_COLOR = "#22333b"
 EDA_COLOR = "#f3ecdc"
 EDA_EDGE = "#a67c2e"
 
+# Холст схемы: своя система координат (0–10 по X, 2–33 по Y), оси скрыты
 fig, ax = plt.subplots(figsize=(11, 16))
 ax.set_xlim(0, 10)
 ax.set_ylim(2.0, 33.0)
 ax.axis("off")
 
 
+# Рисует скруглённый блок с текстом по центру и возвращает (cx, cy, w, h) — по ним строятся стрелки
 def box(cx, cy, w, h, text, facecolor=STAGE_COLOR, edgecolor=STAGE_EDGE, fontsize=10.5):
     b = FancyBboxPatch(
         (cx - w / 2, cy - h / 2), w, h,
@@ -37,6 +50,7 @@ def box(cx, cy, w, h, text, facecolor=STAGE_COLOR, edgecolor=STAGE_EDGE, fontsiz
     return (cx, cy, w, h)
 
 
+# Рисует стрелку от нижней границы одного блока к верхней границе другого (точки можно задать вручную)
 def arrow(b_from, b_to, dy_from=None, dy_to=None):
     x1, y1, w1, h1 = b_from
     x2, y2, w2, h2 = b_to
@@ -59,10 +73,12 @@ arrow(b2, b3)
 arrow(b3, b4)
 
 # --- Разветвление на три направления ---
+# X-координаты трёх колонок ветвей (EDA, машинное обучение, нейронная сеть) и их ширина
 COL_EDA, COL_ML, COL_NN = 1.7, 5.0, 8.3
 COL_W = 2.9
 
 
+# Заголовок над колонкой ветви; белая подложка, чтобы стрелки не пересекали текст
 def branch_header(cx, text, color):
     ax.text(cx, 22.7, text, ha="center", va="center", fontsize=9.5,
              fontweight="bold", color=color,
@@ -141,6 +157,7 @@ b10 = box(5, 3.4, 7.6, 1.6,
           "Пользователь: ввод характеристик\nматериала → прогноз (ориентировочный)")
 arrow(b9, b10)
 
+# Сохраняем схему в PNG (300 dpi); поля pad_inches предотвращают обрез блоков по краю
 fig.tight_layout()
 out_path = os.path.join(FIGURES_DIR, "flowchart.png")
 fig.savefig(out_path, dpi=300, bbox_inches="tight", pad_inches=0.3)
